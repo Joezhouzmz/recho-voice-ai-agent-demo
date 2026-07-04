@@ -23,12 +23,12 @@ For each run, record:
 
 ## Current Version 1 Behavior
 
-The first implementation supports two execution modes:
+The implementation supports two response-generation modes:
 
-1. **Local smoke-test mode**: uses sidecar `.txt` transcripts next to the audio files, deterministic local agent responses, and macOS `say` TTS.
-2. **Real ASR/Gemini mode**: uses optional Whisper/faster-whisper for ASR and Gemini when `GEMINI_API_KEY` is set.
+1. **Demo mode**: uses sidecar `.txt` transcripts next to the audio files, Gemini for agent responses, and macOS `say` for TTS.
+2. **Development mock mode**: uses a static mock response to check VAD/TTS/logging without API usage.
 
-The sidecar transcript mode is intentional. It lets the full VAD -> ASR interface -> agent -> TTS -> metrics loop run on a clean machine before optional ASR dependencies are installed.
+The sidecar transcript mode is intentional. It lets the full VAD -> ASR interface -> Gemini agent -> TTS -> metrics loop run on a clean machine before optional ASR dependencies are installed.
 
 ## Gemini Demo Results
 
@@ -53,37 +53,27 @@ Results:
 
 Committed artifacts are available in `demo_results_gemini/`.
 
-## Smoke-Test Results
+## Development Mock Check
 
 Command set:
 
 ```bash
 python3 scripts/create_demo_audio.py
-python3 main.py sample_inputs/input_en.wav --language en --agent-backend local --run-id en
-python3 main.py sample_inputs/input_ja.wav --language ja --agent-backend local --run-id ja
-python3 main.py sample_inputs/input_zh.wav --language zh --agent-backend local --run-id zh
+python3 main.py sample_inputs/input_en.wav --language en --agent-backend mock --run-id en_mock
 ```
 
-Results:
+Expected stage behavior:
 
-| Input | Language | Transcript | Response | Total latency |
-| --- | --- | --- | --- | --- |
-| `sample_inputs/input_en.wav` | English | I want to reschedule my appointment. | Sure. What date and time would you prefer? | 2.1370s |
-| `sample_inputs/input_ja.wav` | Japanese | 請求書について確認したいです。 | 請求書についてですね。確認したい内容をもう少し詳しく教えてください。 | 2.4811s |
-| `sample_inputs/input_zh.wav` | Chinese | 我想更改我的预约时间。 | 当然可以。您想把预约改到哪一天和几点？ | 2.5936s |
-
-Observed stage behavior:
-
-- VAD ran on all three WAV files and wrote trimmed speech segments.
+- VAD runs on the WAV file and writes a trimmed speech segment.
 - ASR interface ran in manual mode using sidecar `.txt` transcripts.
-- The local agent fallback produced useful customer-support replies.
-- macOS `say` produced real WAV response audio files.
-- The run log was written to `outputs/run_log.json`.
+- The mock agent returns a static development-only response.
+- macOS `say` produces a real WAV response audio file.
+- The run log is written to `outputs/run_log.json`.
 
 ## Limitations
 
 - The built-in VAD is a simple RMS energy threshold, not Silero VAD.
-- The local agent fallback is deterministic and shallow.
+- The mock agent is development-only and is not a real response generator.
 - macOS `say` is useful for demo audio generation but is not production-grade neural TTS.
 - Real ASR quality is not measured until Whisper/faster-whisper is installed and run.
 
@@ -91,5 +81,4 @@ Observed stage behavior:
 
 - Add Silero VAD as an optional stronger VAD backend.
 - Run faster-whisper on the three sample audios and compare transcripts against sidecar text.
-- Add a Gemini run with the same transcripts and compare response quality against local rules.
 - Add a small result table copied from `outputs/run_log.json`.

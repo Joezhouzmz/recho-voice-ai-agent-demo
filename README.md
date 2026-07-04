@@ -14,10 +14,9 @@ It is intentionally small: the goal is to show practical understanding of speech
 
 - End-to-end voice pipeline with modular Python stages.
 - English, Japanese, and Chinese sample inputs.
-- Local smoke-test mode that runs on macOS without API keys.
-- Optional Gemini agent backend when `GEMINI_API_KEY` is available.
+- Gemini-backed response generation for the committed demo path.
+- Explicit development-only mock mode for pipeline checks without API usage.
 - Optional Whisper/faster-whisper ASR backend for real transcription.
-- Committed demo artifacts in [demo_results/](demo_results/).
 - Committed Gemini-backed demo artifacts in [demo_results_gemini/](demo_results_gemini/).
 - Per-stage latency and result logging in JSON.
 
@@ -32,13 +31,13 @@ vad.py
         |
         v
 asr.py
-  sidecar transcript for smoke tests
+  sidecar transcript for reproducible demo runs
   optional Whisper / faster-whisper for real ASR
         |
         v
 agent.py
-  deterministic local support responses
-  optional Gemini Flash-family model
+  Gemini Flash-family model
+  explicit mock backend for development checks
         |
         v
 tts.py
@@ -55,7 +54,7 @@ outputs/response_*.wav
 | --- | --- | --- | --- |
 | Voice activity detection | `vad.py` | RMS energy threshold | Silero VAD / endpointing from managed ASR |
 | Speech-to-text | `asr.py` | sidecar `.txt` transcript for smoke tests | faster-whisper, Whisper, managed ASR APIs |
-| Agent response | `agent.py` | local deterministic rules | Gemini Flash-family model |
+| Agent response | `agent.py` | Gemini `gemini-2.5-flash` | Gemini model comparison / tool-enabled agent |
 | Text-to-speech | `tts.py` | macOS `say` + `afconvert` | Google TTS, Azure Speech, Polly, Piper |
 | Metrics | `metrics.py` | JSON timing logs | benchmark table / latency dashboard |
 
@@ -73,12 +72,13 @@ Generate the sample input audio files:
 python3 scripts/create_demo_audio.py
 ```
 
-Run all three local examples:
+Set a Gemini API key and run all three demo examples:
 
 ```bash
-python3 main.py sample_inputs/input_en.wav --language en --agent-backend local --run-id en
-python3 main.py sample_inputs/input_ja.wav --language ja --agent-backend local --run-id ja
-python3 main.py sample_inputs/input_zh.wav --language zh --agent-backend local --run-id zh
+export GEMINI_API_KEY="your-api-key"
+python3 main.py sample_inputs/input_en.wav --language en --gemini-model gemini-2.5-flash --run-id en_gemini
+python3 main.py sample_inputs/input_ja.wav --language ja --gemini-model gemini-2.5-flash --run-id ja_gemini
+python3 main.py sample_inputs/input_zh.wav --language zh --gemini-model gemini-2.5-flash --run-id zh_gemini
 ```
 
 Generated working outputs are written to:
@@ -91,7 +91,7 @@ outputs/
   run_log.json
 ```
 
-`outputs/` is ignored by git. Selected reviewable outputs are committed in [demo_results/](demo_results/) and [demo_results_gemini/](demo_results_gemini/).
+`outputs/` is ignored by git. Selected Gemini-backed outputs are committed in [demo_results_gemini/](demo_results_gemini/).
 
 ## Demo Inputs
 
@@ -103,23 +103,7 @@ outputs/
 
 ## Demo Results
 
-Local smoke-test mode has been run successfully on the three committed inputs.
-
-| Input | Transcript source | Agent backend | Response audio | Total latency |
-| --- | --- | --- | --- | --- |
-| `sample_inputs/input_en.wav` | sidecar `.txt` | local rules | `demo_results/response_en.wav` | 2.1370s |
-| `sample_inputs/input_ja.wav` | sidecar `.txt` | local rules | `demo_results/response_ja.wav` | 2.4811s |
-| `sample_inputs/input_zh.wav` | sidecar `.txt` | local rules | `demo_results/response_zh.wav` | 2.5936s |
-
-Detailed JSON outputs:
-
-- [demo_results/result_en.json](demo_results/result_en.json)
-- [demo_results/result_ja.json](demo_results/result_ja.json)
-- [demo_results/result_zh.json](demo_results/result_zh.json)
-
-## Gemini Demo Results
-
-The Gemini-backed agent path has also been run successfully with `gemini-2.5-flash`.
+The committed demo result set uses `gemini-2.5-flash` for the agent response stage.
 
 | Input | Agent backend | Response text | Response audio | Total latency |
 | --- | --- | --- | --- | --- |
@@ -127,20 +111,21 @@ The Gemini-backed agent path has also been run successfully with `gemini-2.5-fla
 | `sample_inputs/input_ja.wav` | Gemini | はい、承知いたしました。請求書についてどのような情報をお探しですか？ | `demo_results_gemini/response_ja_gemini.wav` | 6.7762s |
 | `sample_inputs/input_zh.wav` | Gemini | 好的，请问您想将预约更改到什么日期和时间？ | `demo_results_gemini/response_zh_gemini.wav` | 10.5106s |
 
-Detailed Gemini JSON outputs:
+Detailed JSON outputs:
 
 - [demo_results_gemini/result_en_gemini.json](demo_results_gemini/result_en_gemini.json)
 - [demo_results_gemini/result_ja_gemini.json](demo_results_gemini/result_ja_gemini.json)
 - [demo_results_gemini/result_zh_gemini.json](demo_results_gemini/result_zh_gemini.json)
 
-## Optional Gemini Agent
+## Development Mock Mode
 
-The local agent fallback is deterministic so the repository can run without credentials. To use Gemini for response generation:
+The demo path requires Gemini. For local development checks without API usage, use the explicit `mock` backend:
 
 ```bash
-export GEMINI_API_KEY="your-api-key"
-python3 main.py sample_inputs/input_en.wav --language en --agent-backend gemini --run-id en_gemini
+python3 main.py sample_inputs/input_en.wav --language en --agent-backend mock --run-id en_mock
 ```
+
+The mock backend returns a static development-only response. It is not used for committed demo results.
 
 API keys should stay local. `.env`, `.env.*`, `gemini_api.txt`, and common Gemini key text-file patterns are ignored by git.
 
@@ -175,13 +160,6 @@ If no ASR backend is installed and no sidecar transcript is available, the pipel
 │   ├── input_ja.txt
 │   ├── input_zh.wav
 │   └── input_zh.txt
-├── demo_results/
-│   ├── response_en.wav
-│   ├── response_ja.wav
-│   ├── response_zh.wav
-│   ├── result_en.json
-│   ├── result_ja.json
-│   └── result_zh.json
 ├── demo_results_gemini/
 │   ├── response_en_gemini.wav
 │   ├── response_ja_gemini.wav
@@ -211,9 +189,9 @@ This prototype was built as a targeted speech-AI portfolio project. It focuses o
 ## Limitations
 
 - VAD is currently a simple energy-threshold implementation, not Silero VAD.
-- The default ASR path uses sidecar transcripts for repeatable local smoke tests.
+- The default ASR path uses sidecar transcripts for repeatable demo runs.
 - macOS `say` is useful for local WAV generation but is not production-grade neural TTS.
-- The local agent is intentionally shallow; Gemini is wired but requires a key.
+- The Gemini agent path requires an API key with available quota.
 - This is a file-based prototype, not a real-time streaming voice application.
 
 ## Roadmap

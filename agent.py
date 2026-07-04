@@ -26,7 +26,7 @@ class AgentResult:
 def generate_response(
     transcript: str,
     language: str = "auto",
-    backend: str = "auto",
+    backend: str = "gemini",
     model: Optional[str] = None,
 ) -> AgentResult:
     language = normalize_language(language)
@@ -34,19 +34,20 @@ def generate_response(
         language = detect_language_from_text(transcript)
 
     backend = backend.strip().lower()
-    model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+    model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-    if backend in ("auto", "gemini") and os.getenv("GEMINI_API_KEY"):
-        try:
-            return _generate_with_gemini(transcript, language, model)
-        except Exception as exc:
-            if backend == "gemini":
-                raise
-            fallback = _local_response(transcript, language)
-            fallback.note = "Gemini failed; used local fallback. Error: {}".format(exc)
-            return fallback
+    if backend == "gemini":
+        if not os.getenv("GEMINI_API_KEY"):
+            raise RuntimeError(
+                "Gemini API key required for the agent stage. "
+                "Set GEMINI_API_KEY, or use --agent-backend mock for development-only pipeline checks."
+            )
+        return _generate_with_gemini(transcript, language, model)
 
-    return _local_response(transcript, language)
+    if backend == "mock":
+        return _mock_response(language)
+
+    raise ValueError("Unsupported agent backend '{}'. Use gemini or mock.".format(backend))
 
 
 def _generate_with_gemini(transcript: str, language: str, model: str) -> AgentResult:
@@ -141,34 +142,18 @@ def _generate_with_gemini_rest(prompt: str, model: str) -> str:
     return "".join(part.get("text", "") for part in parts)
 
 
-def _local_response(transcript: str, language: str) -> AgentResult:
-    lowered = transcript.lower()
+def _mock_response(language: str) -> AgentResult:
     if language == "ja":
-        if "請求" in transcript or "invoice" in lowered:
-            text = "請求書についてですね。確認したい内容をもう少し詳しく教えてください。"
-        elif "予約" in transcript or "appointment" in lowered:
-            text = "予約変更ですね。ご希望の日付と時間を教えてください。"
-        else:
-            text = "承知しました。確認したい内容を一つ教えてください。"
+        text = "これは開発確認用のモック応答です。Gemini APIキーを設定すると実際のエージェント応答を生成します。"
     elif language == "zh":
-        if "发票" in transcript or "請求" in transcript or "invoice" in lowered:
-            text = "您想确认发票相关问题。请告诉我具体想查看哪一项。"
-        elif "预约" in transcript or "appointment" in lowered:
-            text = "当然可以。您想把预约改到哪一天和几点？"
-        else:
-            text = "好的。请告诉我您希望我先帮您处理哪一件事。"
+        text = "这是用于开发检查的模拟回复。设置 Gemini API 密钥后会生成真实的智能体回复。"
     else:
-        if "invoice" in lowered or "bill" in lowered:
-            text = "Sure. Which invoice detail would you like to check?"
-        elif "appointment" in lowered or "reschedule" in lowered:
-            text = "Sure. What date and time would you prefer?"
-        else:
-            text = "Sure. Could you share one more detail so I can help?"
+        text = "This is a development-only mock response. Set GEMINI_API_KEY to generate a real agent response."
 
     return AgentResult(
         response_text=text,
         language=language,
-        backend="local_rules",
-        model="deterministic_support_responses",
-        note="Used deterministic fallback; set GEMINI_API_KEY to use Gemini.",
+        backend="mock",
+        model="static_development_response",
+        note="Development-only mock response. Not used for committed demo results.",
     )

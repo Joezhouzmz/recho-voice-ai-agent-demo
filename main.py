@@ -44,14 +44,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--agent-backend",
-        default="auto",
-        choices=("auto", "local", "gemini"),
-        help="Response generator. auto uses Gemini when GEMINI_API_KEY is set, otherwise local rules.",
+        default="gemini",
+        choices=("gemini", "mock"),
+        help="Response generator. gemini is the demo path; mock is development-only.",
     )
     parser.add_argument(
         "--gemini-model",
         default=None,
-        help="Gemini model name. Defaults to GEMINI_MODEL or gemini-2.5-flash-lite.",
+        help="Gemini model name. Defaults to GEMINI_MODEL or gemini-2.5-flash.",
     )
     parser.add_argument(
         "--output-dir",
@@ -98,11 +98,10 @@ def main() -> int:
             )
 
         with timed_stage("agent", timings):
-            agent_backend = "local" if args.agent_backend == "local" else args.agent_backend
             agent_result = generate_response(
                 asr_result.transcript,
                 language=asr_result.language,
-                backend=agent_backend,
+                backend=args.agent_backend,
                 model=args.gemini_model,
             )
 

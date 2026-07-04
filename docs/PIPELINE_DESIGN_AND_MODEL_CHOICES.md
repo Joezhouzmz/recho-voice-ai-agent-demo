@@ -243,8 +243,8 @@ Official references:
 
 Recommended demo approach:
 
-- Use Gemini Flash / Flash-Lite if an API key is available.
-- Keep a deterministic local fallback in `agent.py` so the pipeline still runs without an API key.
+- Use Gemini Flash-family models as the real agent backend.
+- Keep only an explicit development `mock` backend for VAD/TTS/logging checks without API usage.
 - Force concise responses with a simple system instruction.
 - Ask the model to respond in `en`, `ja`, or `zh` based on detected language.
 
@@ -417,7 +417,7 @@ Fastest good version:
 | --- | --- | --- |
 | VAD | Silero VAD | Free, fast, strong local baseline |
 | ASR | Whisper / faster-whisper | Multilingual and local |
-| Agent | Gemini Flash-family model + local fallback | Low-latency, free/limited-free API path, good enough for short replies |
+| Agent | Gemini Flash-family model | Low-latency, free/limited-free API path, good enough for short replies |
 | TTS | macOS `say` first, then Google/Azure/Polly or Piper | Fastest path first, better voice quality later |
 | Metrics | Local JSON timing log | Simple, interview-useful evidence |
 
