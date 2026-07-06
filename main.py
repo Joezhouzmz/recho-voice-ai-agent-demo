@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from agent import generate_response
 from asr import ASRUnavailable, transcribe_audio
@@ -24,35 +24,7 @@ def parse_args() -> argparse.Namespace:
         "--language",
         default="auto",
         choices=("auto",) + SUPPORTED_LANGUAGES,
-        help="Expected language. Use auto to infer from ASR/manual transcript.",
-    )
-    parser.add_argument(
-        "--transcript",
-        default=None,
-        help="Manual transcript for --asr-backend manual only.",
-    )
-    parser.add_argument(
-        "--vad-backend",
-        default="silero",
-        choices=("silero", "energy"),
-        help="VAD backend. silero is the demo path; energy is a development fallback.",
-    )
-    parser.add_argument(
-        "--asr-backend",
-        default="faster-whisper",
-        choices=("faster-whisper", "whisper", "manual"),
-        help="ASR backend. faster-whisper is the demo path; manual is development-only.",
-    )
-    parser.add_argument(
-        "--asr-model",
-        default="small",
-        help="Whisper/faster-whisper model size when an ASR backend is installed.",
-    )
-    parser.add_argument(
-        "--agent-backend",
-        default="gemini",
-        choices=("gemini", "mock"),
-        help="Response generator. gemini is the demo path; mock is development-only.",
+        help="Expected language. Use auto to infer from ASR.",
     )
     parser.add_argument(
         "--gemini-model",
@@ -79,16 +51,7 @@ def main() -> int:
     output_dir = args.output_dir
     run_id = args.run_id or input_audio.stem
     language = normalize_language(args.language)
-    if args.transcript and args.asr_backend != "manual":
-        print(
-            "--transcript can only be used with --asr-backend manual. "
-            "Use faster-whisper without --transcript for real ASR transcription.",
-            file=sys.stderr,
-        )
-        return 2
-    manual_transcript = None
-    if args.asr_backend == "manual":
-        manual_transcript = args.transcript or _read_sidecar_transcript(input_audio)
+    asr_model = os.getenv("ASR_MODEL", "small")
 
     speech_segment_path = output_dir / "speech_segment_{}.wav".format(run_id)
     response_audio_path = output_dir / "response_{}.wav".format(run_id)
@@ -100,22 +63,19 @@ def main() -> int:
 
     try:
         with timed_stage("vad", timings):
-            vad_result = segment_speech(input_audio, speech_segment_path, backend=args.vad_backend)
+            vad_result = segment_speech(input_audio, speech_segment_path)
 
         with timed_stage("asr", timings):
             asr_result = transcribe_audio(
                 speech_segment_path,
                 language=language,
-                manual_transcript=manual_transcript,
-                backend=args.asr_backend,
-                model=args.asr_model,
+                model=asr_model,
             )
 
         with timed_stage("agent", timings):
             agent_result = generate_response(
                 asr_result.transcript,
                 language=asr_result.language,
-                backend=args.agent_backend,
                 model=args.gemini_model,
             )
 
@@ -152,15 +112,6 @@ def main() -> int:
     append_run_log(run_log_path, record)
     print(json.dumps(record, ensure_ascii=False, indent=2))
     return 0
-
-
-def _read_sidecar_transcript(input_audio: Path) -> Optional[str]:
-    sidecar = input_audio.with_suffix(".txt")
-    if sidecar.exists():
-        text = sidecar.read_text(encoding="utf-8").strip()
-        return text or None
-    return None
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

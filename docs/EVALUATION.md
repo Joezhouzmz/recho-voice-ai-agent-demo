@@ -38,9 +38,9 @@ The committed result set lives in `demo_results/` and was generated with:
 Command shape:
 
 ```bash
-GEMINI_API_KEY="$(tr -d '\r\n ' < gemini_api.txt)" .venv/bin/python main.py sample_inputs/input_en.wav --language en --asr-model local_models/faster-whisper-base --gemini-model gemini-2.5-flash --output-dir demo_results --run-id en
-GEMINI_API_KEY="$(tr -d '\r\n ' < gemini_api.txt)" .venv/bin/python main.py sample_inputs/input_ja.wav --language ja --asr-model local_models/faster-whisper-base --gemini-model gemini-2.5-flash --output-dir demo_results --run-id ja
-GEMINI_API_KEY="$(tr -d '\r\n ' < gemini_api.txt)" .venv/bin/python main.py sample_inputs/input_zh.wav --language zh --asr-model local_models/faster-whisper-base --gemini-model gemini-2.5-flash --output-dir demo_results --run-id zh
+ASR_MODEL=local_models/faster-whisper-base GEMINI_API_KEY="$(tr -d '\r\n ' < gemini_api.txt)" .venv/bin/python main.py sample_inputs/input_en.wav --language en --output-dir demo_results --run-id en
+ASR_MODEL=local_models/faster-whisper-base GEMINI_API_KEY="$(tr -d '\r\n ' < gemini_api.txt)" .venv/bin/python main.py sample_inputs/input_ja.wav --language ja --output-dir demo_results --run-id ja
+ASR_MODEL=local_models/faster-whisper-base GEMINI_API_KEY="$(tr -d '\r\n ' < gemini_api.txt)" .venv/bin/python main.py sample_inputs/input_zh.wav --language zh --output-dir demo_results --run-id zh
 ```
 
 Results:
@@ -50,24 +50,6 @@ Results:
 | `sample_inputs/input_en.wav` | I want to reschedule my appointment. | I can help you with that. What is the appointment you would like to reschedule? | 6.0067s |
 | `sample_inputs/input_ja.wav` | 予約を変更したいです | 予約の変更ですね。予約番号を教えていただけますか？ | 7.7829s |
 | `sample_inputs/input_zh.wav` | 我想更改我的预约时间 | 好的，请问您想将预约更改到什么时间？ | 6.3455s |
-
-## Development Checks
-
-Mock agent checks validate VAD, ASR, TTS, and JSON logging without spending Gemini quota:
-
-```bash
-.venv/bin/python main.py sample_inputs/input_en.wav --language en --agent-backend mock --asr-model local_models/faster-whisper-base --run-id en_dev
-.venv/bin/python main.py sample_inputs/input_ja.wav --language ja --agent-backend mock --asr-model local_models/faster-whisper-base --run-id ja_dev
-.venv/bin/python main.py sample_inputs/input_zh.wav --language zh --agent-backend mock --asr-model local_models/faster-whisper-base --run-id zh_dev
-```
-
-Manual transcript mode is still available for explicit non-ASR testing:
-
-```bash
-.venv/bin/python main.py sample_inputs/input_en.wav --language en --asr-backend manual --transcript "I want to reschedule my appointment." --agent-backend mock --run-id en_manual
-```
-
-The pipeline does not read sidecar `.txt` transcripts unless `--asr-backend manual` is selected.
 
 ## Observations
 

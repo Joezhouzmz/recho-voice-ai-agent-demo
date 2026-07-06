@@ -159,7 +159,7 @@ Why:
 - It is free/open-source and published under MIT license.
 - It is lightweight and fast enough for local demo use.
 - It is designed for speech detection, voice bots, voice interfaces, call-center style automation, and edge/mobile use cases.
-- It is more modern than basic energy-threshold VAD.
+- It is more robust than hand-written amplitude thresholding.
 
 Official reference: [Silero VAD GitHub](https://github.com/snakers4/silero-vad)
 
@@ -253,7 +253,6 @@ Official references:
 Recommended demo approach:
 
 - Use Gemini Flash-family models as the real agent backend.
-- Keep only an explicit development `mock` backend for VAD/TTS/logging checks without API usage.
 - Force concise responses with a simple system instruction.
 - Ask the model to respond in `en`, `ja`, or `zh` based on detected language.
 

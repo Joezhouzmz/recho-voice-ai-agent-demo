@@ -18,7 +18,6 @@ The goal is not to train custom models or build a full application shell. The go
 - Real response audio generation with macOS `say` and `afconvert`.
 - English, Japanese, and Chinese sample audio inputs.
 - JSON artifacts that record backend, model, transcript, response text, output audio path, and per-stage latency.
-- Development-only fallbacks for isolated testing: energy VAD, manual transcript ASR, and mock agent.
 
 ## Architecture
 
@@ -82,19 +81,12 @@ Run the real demo path:
 
 ```bash
 export GEMINI_API_KEY="your-api-key"
-.venv/bin/python main.py sample_inputs/input_en.wav --language en --gemini-model gemini-2.5-flash --run-id en
-.venv/bin/python main.py sample_inputs/input_ja.wav --language ja --gemini-model gemini-2.5-flash --run-id ja
-.venv/bin/python main.py sample_inputs/input_zh.wav --language zh --gemini-model gemini-2.5-flash --run-id zh
+.venv/bin/python main.py sample_inputs/input_en.wav --language en --run-id en
+.venv/bin/python main.py sample_inputs/input_ja.wav --language ja --run-id ja
+.venv/bin/python main.py sample_inputs/input_zh.wav --language zh --run-id zh
 ```
 
-By default, the CLI uses:
-
-- `--vad-backend silero`
-- `--asr-backend faster-whisper`
-- `--asr-model small`
-- `--agent-backend gemini`
-
-The committed result set was generated with the local CTranslate2 model folder `local_models/faster-whisper-base`, equivalent to `Systran/faster-whisper-base`, because it gives better multilingual transcripts on synthetic macOS sample audio than `tiny`. `local_models/` is ignored by git.
+The CLI always runs the real pipeline: Silero VAD, faster-whisper ASR, Gemini, and macOS TTS. The default ASR model is `small`. To reproduce the committed artifact set exactly, set `ASR_MODEL=local_models/faster-whisper-base` after downloading that ignored local model folder.
 
 ## Demo Inputs
 
@@ -104,7 +96,7 @@ The committed result set was generated with the local CTranslate2 model folder `
 | Japanese | `sample_inputs/input_ja.wav` | 予約を変更したいです。 |
 | Chinese | `sample_inputs/input_zh.wav` | 我想更改我的预约时间。 |
 
-The `.txt` files in `sample_inputs/` document the intended sample phrases. `main.py` does not read them unless `--asr-backend manual` is explicitly selected.
+The `.txt` files in `sample_inputs/` document the intended sample phrases. `main.py` does not read them.
 
 ## Demo Results
 
@@ -125,28 +117,6 @@ Detailed JSON outputs:
 - [demo_results/result_en.json](demo_results/result_en.json)
 - [demo_results/result_ja.json](demo_results/result_ja.json)
 - [demo_results/result_zh.json](demo_results/result_zh.json)
-
-## Development Modes
-
-Mock agent check without a Gemini API call:
-
-```bash
-.venv/bin/python main.py sample_inputs/input_en.wav --language en --agent-backend mock --run-id en_dev
-```
-
-Energy VAD fallback:
-
-```bash
-.venv/bin/python main.py sample_inputs/input_en.wav --language en --vad-backend energy --agent-backend mock --run-id en_energy
-```
-
-Manual transcript mode for testing non-ASR stages:
-
-```bash
-.venv/bin/python main.py sample_inputs/input_en.wav --language en --asr-backend manual --transcript "I want to reschedule my appointment." --agent-backend mock --run-id en_manual
-```
-
-Manual mode is intentionally development-only. Sidecar `.txt` files and `--transcript` are rejected unless `--asr-backend manual` is selected.
 
 ## Repository Layout
 

@@ -26,28 +26,17 @@ class AgentResult:
 def generate_response(
     transcript: str,
     language: str = "auto",
-    backend: str = "gemini",
     model: Optional[str] = None,
 ) -> AgentResult:
     language = normalize_language(language)
     if language == "auto":
         language = detect_language_from_text(transcript)
 
-    backend = backend.strip().lower()
     model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-    if backend == "gemini":
-        if not os.getenv("GEMINI_API_KEY"):
-            raise RuntimeError(
-                "Gemini API key required for the agent stage. "
-                "Set GEMINI_API_KEY, or use --agent-backend mock for development-only pipeline checks."
-            )
-        return _generate_with_gemini(transcript, language, model)
-
-    if backend == "mock":
-        return _mock_response(language)
-
-    raise ValueError("Unsupported agent backend '{}'. Use gemini or mock.".format(backend))
+    if not os.getenv("GEMINI_API_KEY"):
+        raise RuntimeError("Gemini API key required for the agent stage. Set GEMINI_API_KEY.")
+    return _generate_with_gemini(transcript, language, model)
 
 
 def _generate_with_gemini(transcript: str, language: str, model: str) -> AgentResult:
@@ -132,20 +121,3 @@ def _generate_with_gemini_rest(prompt: str, model: str) -> str:
         .get("parts", [])
     )
     return "".join(part.get("text", "") for part in parts)
-
-
-def _mock_response(language: str) -> AgentResult:
-    if language == "ja":
-        text = "これは開発確認用のモック応答です。Gemini APIキーを設定すると実際のエージェント応答を生成します。"
-    elif language == "zh":
-        text = "这是用于开发检查的模拟回复。设置 Gemini API 密钥后会生成真实的智能体回复。"
-    else:
-        text = "This is a development-only mock response. Set GEMINI_API_KEY to generate a real agent response."
-
-    return AgentResult(
-        response_text=text,
-        language=language,
-        backend="mock",
-        model="static_development_response",
-        note="Development-only mock response. Not used for committed demo results.",
-    )
